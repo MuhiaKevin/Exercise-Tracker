@@ -21,10 +21,10 @@ app.get('/', (req, res) => {
 
 
 
-// DATABASE 
+// Database Config 
 
 const mongo_uri = process.env.MONGO_LOCAL_URI
-mongoose.connect(mongo_uri, { useNewUrlParser: true, useUnifiedTopology: true, useMongoClient: true })
+mongoose.connect(mongo_uri, {useMongoClient: true })
 const db = mongoose.connection;
 
 db.once('open', _ => {
@@ -35,21 +35,37 @@ db.on('error', err => {
   console.error('connection error: ', err)
 })
 
-const Schema = mongoose.Schema;
 
+// Database  Schema 
+const Schema = mongoose.Schema;
 const exerciseSchema = new Schema({
   user_id: { type: String, required: true },
   user_name: String,
-  exercises : [{
-    desc : String,
-    duration : Number,
-    date : {}
+  exercises: [{
+    desc: String,
+    duration: Number,
+    date: {}
   }]
 })
 
 const ExerciseTracker = mongoose.model('exercisetracker', exerciseSchema);
 
 
+// get all users
+app.get('/api/exercise/users', (req, res) => {
+  let users = []
+  ExerciseTracker.find({}, (error, data) => {
+    data.forEach((user) =>{
+      users.push({username : user['_doc']['user_name'], _id : user['_doc']['_id']})
+    })
+    res.json(users)
+  })
+
+})
+
+
+
+// add a new user
 app.post('/api/exercise/new-user', (req, res, next) => {
   try {
     let username = req.body.username;
@@ -67,12 +83,12 @@ app.post('/api/exercise/new-user', (req, res, next) => {
 
         exerciseTracker.save((error, data) => {
           console.log('Person Added sucessfully')
-          res.json({username : data['user_name'], userid : data['user_id']});
+          res.json({ username: data['user_name'], _id: data['_id'] });
         })
       }
       else {
         // TODO: needs to be changed
-        res.status(400).json({error : "User already exists"})
+        res.status(400).json({ error: "User already exists" })
       }
 
     })
@@ -80,32 +96,6 @@ app.post('/api/exercise/new-user', (req, res, next) => {
     next(error)
   }
 })
-
-
-
-// Not found middleware
-// app.use((req, res, next) => {
-//   return next({ status: 404, message: 'not found' })
-// })
-
-// Error Handling middleware
-// app.use((err, req, res, next) => {
-//   let errCode, errMessage
-
-//   if (err.errors) {
-//     // mongoose validation error
-//     errCode = 400 // bad request
-//     const keys = Object.keys(err.errors)
-//     // report the first validation error
-//     errMessage = err.errors[keys[0]].message
-//   } else {
-//     // generic or custom error
-//     errCode = err.status || 500
-//     errMessage = err.message || 'Internal Server Error'
-//   }
-//   res.status(errCode).type('txt')
-//     .send(errMessage)
-// })
 
 
 app.use((err, req, res, next) => {
