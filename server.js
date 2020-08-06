@@ -29,7 +29,7 @@ app.get('/', (req, res) => {
 // Database Config 
 
 const mongo_uri = process.env.MONGO_LOCAL_URI
-mongoose.connect(mongo_uri, { useMongoClient: true })
+mongoose.connect(process.env.MONGO_LOCAL_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 const db = mongoose.connection;
 
 db.once('open', _ => {
@@ -47,7 +47,7 @@ const exerciseSchema = new Schema({
   user_id: { type: String, required: true },
   user_name: String,
   exercises: [{
-    desc: String,
+    description: String,
     duration: Number,
     date: Date
   }]
@@ -75,7 +75,7 @@ app.get('/api/exercise/users', (req, res) => {
 
 app.get('/api/exercise/log/', (req, res) => {
   // console.log(req.params)
-  let { userId, from , to,  limit } = req.query
+  let { userId, from, to, limit } = req.query
 
   const result = {
     _id: "",
@@ -92,7 +92,7 @@ app.get('/api/exercise/log/', (req, res) => {
       result.count = data['exercises'].length
 
       data['exercises'].forEach((exercise) => {
-        result.log.push({ desc: exercise['desc'], duration: exercise['duration'], date: exercise['date'] })
+        result.log.push({ description: exercise['description'], duration: exercise['duration'], date: exercise['date'] })
       })
 
       res.json(result)
@@ -107,19 +107,31 @@ app.get('/api/exercise/log/', (req, res) => {
 
 // add an  exercise
 app.post('/api/exercise/add', (req, res) => {
-  let { userId, desc, duration, date } = req.body;
+  let { userId, description, duration, date } = req.body;
 
-  if (userId === undefined || desc === undefined || duration === undefined) {
+  if (userId === undefined || description === undefined || duration === undefined) {
     throw new ErrorHandler(400, 'Request is missing something');
   }
 
   ExerciseTracker.findById(userId, (error, data) => {
     if (data != null) {
-      let newExercise = { desc: desc, duration: duration }
+      let newExercise = { description: description, duration: duration }
 
       if (date === undefined) {
         let currentDate = new Date(Date.now())
         newExercise.date = currentDate.toDateString()
+
+        data.exercises.push(newExercise)
+
+        data.save((error, updatedData) => {
+          if (error) console.error(error)
+
+          newExercise.username = data['user_name'];
+          newExercise.userId = data['_id'];
+
+          res.json(newExercise)
+        })
+
       }
 
       else if (Date.parse(date) === NaN) {
