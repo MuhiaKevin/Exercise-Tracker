@@ -8,6 +8,11 @@ const cors = require('cors')
 const mongoose = require('mongoose')
 const { handleError, ErrorHandler } = require('./helpers/error')
 
+// TODO:
+// improve error handling
+// https://medium.com/@stefanledin/how-to-solve-the-unknown-modifier-pushall-error-in-mongoose-d631489f85c0
+
+
 // middlewares
 
 app.use(cors())
@@ -24,7 +29,7 @@ app.get('/', (req, res) => {
 // Database Config 
 
 const mongo_uri = process.env.MONGO_LOCAL_URI
-mongoose.connect(mongo_uri, {useMongoClient: true })
+mongoose.connect(mongo_uri, { useMongoClient: true })
 const db = mongoose.connection;
 
 db.once('open', _ => {
@@ -44,8 +49,10 @@ const exerciseSchema = new Schema({
   exercises: [{
     desc: String,
     duration: Number,
-    date: {}
+    date: Date
   }]
+}, {
+  usePushEach: true
 })
 
 const ExerciseTracker = mongoose.model('exercisetracker', exerciseSchema);
@@ -55,10 +62,54 @@ const ExerciseTracker = mongoose.model('exercisetracker', exerciseSchema);
 app.get('/api/exercise/users', (req, res) => {
   let users = []
   ExerciseTracker.find({}, (error, data) => {
-    data.forEach((user) =>{
-      users.push({username : user['_doc']['user_name'], _id : user['_doc']['_id']})
+    data.forEach((user) => {
+      users.push({ username: user['_doc']['user_name'], _id: user['_doc']['_id'] })
     })
     res.json(users)
+  })
+
+})
+
+
+// add an  exercise
+app.post('/api/exercise/add', (req, res) => {
+  let { userId, desc, duration, date } = req.body;
+
+  if (userId === undefined || desc === undefined || duration === undefined) {
+    throw new ErrorHandler(400, 'Request is missing something');
+  }
+
+  ExerciseTracker.findById(userId, (error, data) => {
+    if (data != null) {
+      let newExercise = { desc: desc, duration: duration }
+
+      if (date === undefined) {
+        let currentDate = new Date(Date.now())
+        newExercise.date = currentDate.toDateString()
+      }
+      
+      else if (Date.parse(date) === NaN) {
+        res.status(400).json({ error: 'Bad request', statusCode: 400 })
+      }
+      else if (typeof(Date.parse(date)) === 'number') {
+        let goodDate = new Date(date)
+        newExercise.date = goodDate.toDateString()
+
+        data.exercises.push(newExercise)
+
+        data.save((error, updatedData) => {
+          if (error) console.error(error)
+
+          newExercise.username = data['user_name'];
+          newExercise.userId = data['_id'];
+
+          res.json(newExercise)
+        })
+      }
+    }
+    else {
+      res.status(404).json({ error: 'User is not in the database', statusCode: 404 })
+    }
   })
 
 })
@@ -75,6 +126,7 @@ app.post('/api/exercise/new-user', (req, res, next) => {
     }
 
     ExerciseTracker.findOne({ user_name: username }, function (err, findData) {
+
       // if user does not exist
       if (findData === null) {
         const userid = shortid.generate();
