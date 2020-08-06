@@ -71,6 +71,40 @@ app.get('/api/exercise/users', (req, res) => {
 })
 
 
+// get user exercise logs
+
+app.get('/api/exercise/log/', (req, res) => {
+  // console.log(req.params)
+  let { userId, from , to,  limit } = req.query
+
+  const result = {
+    _id: "",
+    username: "",
+    count: "",
+    log: []
+  }
+
+
+  ExerciseTracker.findById(userId, (error, data) => {
+    if (data != null) {
+      result._id = data['_id']
+      result.username = data['user_name']
+      result.count = data['exercises'].length
+
+      data['exercises'].forEach((exercise) => {
+        result.log.push({ desc: exercise['desc'], duration: exercise['duration'], date: exercise['date'] })
+      })
+
+      res.json(result)
+    }
+    else {
+      res.status(404).json({ error: "User does not exist", statusCode: 404 })
+    }
+
+  })
+})
+
+
 // add an  exercise
 app.post('/api/exercise/add', (req, res) => {
   let { userId, desc, duration, date } = req.body;
@@ -87,11 +121,11 @@ app.post('/api/exercise/add', (req, res) => {
         let currentDate = new Date(Date.now())
         newExercise.date = currentDate.toDateString()
       }
-      
+
       else if (Date.parse(date) === NaN) {
         res.status(400).json({ error: 'Bad request', statusCode: 400 })
       }
-      else if (typeof(Date.parse(date)) === 'number') {
+      else if (typeof (Date.parse(date)) === 'number') {
         let goodDate = new Date(date)
         newExercise.date = goodDate.toDateString()
 
@@ -113,7 +147,6 @@ app.post('/api/exercise/add', (req, res) => {
   })
 
 })
-
 
 
 // add a new user
