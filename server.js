@@ -73,7 +73,7 @@ app.get('/api/exercise/users', (req, res) => {
 
 // get user exercise logs
 
-app.get('/api/exercise/log/', (req, res) => {
+app.get('/api/exercise/log', (req, res) => {
   // console.log(req.params)
   let { userId, from, to, limit } = req.query
 
@@ -108,6 +108,7 @@ app.get('/api/exercise/log/', (req, res) => {
 // add an  exercise
 app.post('/api/exercise/add', (req, res) => {
   let { userId, description, duration, date } = req.body;
+  let newExercise = { _id: '', username: '', date: '', 'duration': parseInt(duration), 'description': description }
 
   if (userId === undefined || description === undefined || duration === undefined) {
     throw new ErrorHandler(400, 'Request is missing something');
@@ -115,20 +116,18 @@ app.post('/api/exercise/add', (req, res) => {
 
   ExerciseTracker.findById(userId, (error, data) => {
     if (data != null) {
-      let newExercise = { description: description, duration: duration }
 
       if (date === undefined) {
         let currentDate = new Date(Date.now())
+
+        newExercise.username = data['user_name']
+        newExercise._id = data['_id']
         newExercise.date = currentDate.toDateString()
 
         data.exercises.push(newExercise)
 
         data.save((error, updatedData) => {
           if (error) console.error(error)
-
-          newExercise.username = data['user_name'];
-          newExercise.userId = data['_id'];
-
           res.json(newExercise)
         })
 
@@ -141,14 +140,14 @@ app.post('/api/exercise/add', (req, res) => {
         let goodDate = new Date(date)
         newExercise.date = goodDate.toDateString()
 
+        newExercise.username = data['user_name']
+        newExercise._id = data['_id']
+
+        console.log
         data.exercises.push(newExercise)
 
         data.save((error, updatedData) => {
           if (error) console.error(error)
-
-          newExercise.username = data['user_name'];
-          newExercise.userId = data['_id'];
-
           res.json(newExercise)
         })
       }
