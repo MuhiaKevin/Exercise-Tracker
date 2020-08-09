@@ -92,8 +92,15 @@ app.get('/api/exercise/log', (req, res) => {
       result.count = data['exercises'].length
 
       data['exercises'].forEach((exercise) => {
-        result.log.push({ description: exercise['description'], duration: exercise['duration'], date: exercise['date'] })
+
+        if ((!from || new Date(from) <= exercise.date) && (!to || new Date(to) >= exercise.date) && (!limit || limit > result.log.length)) {
+          // Add exercise info
+          result.log.push({ description: exercise['description'], duration: exercise['duration'], date: exercise['date'] })
+        }
+
       })
+
+      result.count = result.log.length
 
       res.json(result)
     }
